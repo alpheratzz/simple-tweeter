@@ -12,7 +12,7 @@ namespace RandomThings
     class Tweeter
     {
         HttpClient client;
-        Dictionary<string, string> authParams;
+        Dictionary<string, string> postParams;
 
         readonly string oauthToken;
         readonly string oauthConsumerKey;
@@ -29,30 +29,34 @@ namespace RandomThings
             client = new HttpClient();
             client.BaseAddress = new Uri(@"https://api.twitter.com/1.1/");
 
-            authParams = new Dictionary<string, string>();
+            postParams = new Dictionary<string, string>();
         }
 
-        public async void Tweet(string text)
+        public async Task<string> Tweet(string text)
         {
-            authParams.Clear();
+            postParams.Clear();
 
-            authParams.Add("oauth_token", oauthToken);
-            authParams.Add("oauth_consumer_key", oauthConsumerKey);
-            authParams.Add("oauth_signature_method", "HMAC-SHA1");
-            authParams.Add("oauth_version", "1.0");
-            authParams.Add("oauth_nonce", GetNonce());
-            authParams.Add("oauth_timestamp", GetUnixTimestamp(DateTime.UtcNow).ToString());
+            postParams.Add("status", text);
 
-            //this is a bit awkward..
-            authParams.Add("status", text);
-            authParams.Add("oauth_signature", GetSignature(authParams));
+            postParams.Add("oauth_token", oauthToken);
+            postParams.Add("oauth_consumer_key", oauthConsumerKey);
+            postParams.Add("oauth_signature_method", "HMAC-SHA1");
+            postParams.Add("oauth_version", "1.0");
+            postParams.Add("oauth_nonce", GetNonce());
+            postParams.Add("oauth_timestamp", GetUnixTimestamp(DateTime.UtcNow).ToString());            
+            
+            postParams.Add("oauth_signature", GetSignature(postParams));
 
-            authParams.Remove("status");
-
-            var tmp = authParams.Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
+            var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
+                .Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
             string auth_header = "OAuth " + string.Join(", ", tmp);
 
-            
+            client.DefaultRequestHeaders.Add("Authorization", auth_header);
+
+            var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
+
+            HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
+            return await response.Content.ReadAsStringAsync();
 
             //relative uri is 
             //statuses/update.json
