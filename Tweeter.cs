@@ -29,13 +29,13 @@ namespace RandomThings
             client = new HttpClient();
             client.BaseAddress = new Uri(@"https://api.twitter.com/1.1/");
 
+            postParams = new Dictionary<string, string>();
+
             //values that are going to be the same for any post request
             postParams.Add("oauth_token", oauthToken);
             postParams.Add("oauth_consumer_key", oauthConsumerKey);
             postParams.Add("oauth_signature_method", "HMAC-SHA1");
-            postParams.Add("oauth_version", "1.0");
-
-            postParams = new Dictionary<string, string>();
+            postParams.Add("oauth_version", "1.0");            
         }
 
         public async Task<string> Tweet(string text)
@@ -43,7 +43,7 @@ namespace RandomThings
             //values that may/should change
             postParams["status"] = text;
             postParams["trim_user"] = "true";
-            postParams["oauth_nonce"] = GetNonce();
+            postParams["oauth_nonce"] = GenerateNonce();
             postParams["oauth_timestamp"] = GetUnixTimestamp(DateTime.UtcNow).ToString();
             
             //creating signature
@@ -51,11 +51,12 @@ namespace RandomThings
 
             var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
                 .Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
-            string auth_header = "OAuth " + string.Join(", ", tmp);
-
-            client.DefaultRequestHeaders.Add("Authorization", auth_header);
+            string auth_header = "OAuth " + string.Join(", ", tmp);            
 
             var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
+
+            //client.DefaultRequestHeaders.Remove("Authorization");
+            client.DefaultRequestHeaders.Add("Authorization", auth_header);
 
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
             return await response.Content.ReadAsStringAsync();
@@ -80,12 +81,12 @@ namespace RandomThings
             return (int)(utcDate - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
         }
 
-        public static string PercentEncode(string text)
+        static string PercentEncode(string text)
         {
             return Uri.EscapeDataString(text);
         }
 
-        static string GetNonce()
+        static string GenerateNonce()
         {
             return Guid.NewGuid().ToString("N");
         }
