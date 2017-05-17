@@ -45,8 +45,9 @@ namespace RandomThings
             postParams["trim_user"] = "true";
             postParams["oauth_nonce"] = GenerateNonce();
             postParams["oauth_timestamp"] = GetUnixTimestamp(DateTime.UtcNow).ToString();
-            
+
             //creating signature
+            postParams.Remove("oauth_signature");
             postParams["oauth_signature"] = GetSignature(postParams);
 
             var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
@@ -54,9 +55,10 @@ namespace RandomThings
             string auth_header = "OAuth " + string.Join(", ", tmp);            
 
             var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
-
-            //client.DefaultRequestHeaders.Remove("Authorization");
+                        
+            client.DefaultRequestHeaders.Remove("Authorization");
             client.DefaultRequestHeaders.Add("Authorization", auth_header);
+            //content.Headers.Add("Authorization", auth_header);
 
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
             return await response.Content.ReadAsStringAsync();

@@ -20,12 +20,12 @@ namespace RandomThings
                 "zHt9rC9if1SGiZt3XgVJ1UXtYGFhPktinpVjryNoecZ9X",
                 "AASY6dyccwjfMDnAlHoXxId46fssDsvYqRrbWn8XSW1SfSTxyX");
 
-            //while (true)
-            //{
+            while (true)
+            {
                 string msg = Console.ReadLine();
                 Console.WriteLine(tweeter.Tweet(msg).Result);
                 Console.WriteLine();
-            //}
+            }
 
             Console.ReadKey(true);
         }
