@@ -15,10 +15,18 @@ namespace RandomThings
 
         static void Main(string[] args)
         {
-            Tweeter tweeter = new Tweeter("491632305-l41LEyIUBg0G81VHnnRNSOJq1DArQ6EMVIrpUS2y",
-                "9EbXB5SZmWUETdsgAVnLPINCM",
-                "zHt9rC9if1SGiZt3XgVJ1UXtYGFhPktinpVjryNoecZ9X",
-                "AASY6dyccwjfMDnAlHoXxId46fssDsvYqRrbWn8XSW1SfSTxyX");
+            string token, consumerKey, tokenSecret, consumerSecret;
+
+            Console.Write("Your OAuth token: ");
+            token = Console.ReadLine();
+            Console.Write("Your OAuth consumer key: ");
+            consumerKey = Console.ReadLine();
+            Console.Write("Your OAuth token secret: ");
+            tokenSecret = Console.ReadLine();
+            Console.Write("Your OAuth consumer secret: ");
+            consumerSecret = Console.ReadLine();
+
+            Tweeter tweeter = new Tweeter(token, consumerKey, tokenSecret, consumerSecret);
 
             while (true)
             {

@@ -14,6 +14,7 @@ namespace RandomThings
         HttpClient client;
         Dictionary<string, string> postParams;
 
+        //not sure if i even need to store them too
         readonly string oauthToken;
         readonly string oauthConsumerKey;
 
@@ -50,15 +51,14 @@ namespace RandomThings
             postParams.Remove("oauth_signature");
             postParams["oauth_signature"] = GetSignature(postParams);
 
+            //adding the Authorization header to the future request
             var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
                 .Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
-            string auth_header = "OAuth " + string.Join(", ", tmp);            
-
-            var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
-                        
+            string auth_header = "OAuth " + string.Join(", ", tmp);  
             client.DefaultRequestHeaders.Remove("Authorization");
             client.DefaultRequestHeaders.Add("Authorization", auth_header);
-            //content.Headers.Add("Authorization", auth_header);
+
+            var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
 
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
             return await response.Content.ReadAsStringAsync();
@@ -77,6 +77,8 @@ namespace RandomThings
 
             return System.Convert.ToBase64String(hmac.ComputeHash(Encoding.ASCII.GetBytes(forSigning)));
         }
+
+        //some utility one-line methods lol
 
         static int GetUnixTimestamp(DateTime utcDate)
         {
