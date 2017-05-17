@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using System.Net.Http;
 using System.Security.Cryptography;
+using System.IO;
 
 namespace RandomThings
 {
@@ -18,13 +19,27 @@ namespace RandomThings
         readonly string oauthToken;
         readonly string oauthConsumerKey;
 
+        readonly string logPath;
+
         HMACSHA1 hmac;
 
-        public Tweeter(string oauthToken, string oauthConsumerKey, string oauthTokenSecret, string oauthConsumerSecret)
+        public Tweeter(string configPath, string logPath)
         {
-            this.oauthToken = oauthToken;
-            this.oauthConsumerKey = oauthConsumerKey;
+            this.logPath = logPath;
 
+            using (StreamReader reader = new StreamReader(configPath))
+            {
+                oauthToken = reader.ReadLine();
+                oauthConsumerKey = reader.ReadLine();
+                string tokenSecret = reader.ReadLine();
+                string consumerSecret = reader.ReadLine();
+                
+                Setup(tokenSecret, consumerSecret);
+            }            
+        }
+
+        void Setup(string oauthTokenSecret, string oauthConsumerSecret)
+        {
             hmac = new HMACSHA1(Encoding.ASCII.GetBytes($"{PercentEncode(oauthConsumerSecret)}&{PercentEncode(oauthTokenSecret)}"));
 
             client = new HttpClient();
@@ -36,7 +51,12 @@ namespace RandomThings
             postParams.Add("oauth_token", oauthToken);
             postParams.Add("oauth_consumer_key", oauthConsumerKey);
             postParams.Add("oauth_signature_method", "HMAC-SHA1");
-            postParams.Add("oauth_version", "1.0");            
+            postParams.Add("oauth_version", "1.0");
+
+            using (StreamWriter logger = new StreamWriter(logPath, true))
+            {
+                logger.WriteLine("\n" + DateTime.Now.ToString() + "\n");
+            }
         }
 
         public async Task<string> Tweet(string text)
@@ -61,7 +81,11 @@ namespace RandomThings
             var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
 
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
-            return await response.Content.ReadAsStringAsync();
+            using (StreamWriter logger = new StreamWriter(logPath, true))
+            {
+                logger.WriteLine(response.Content.ReadAsStringAsync().Result + "\n");
+            }
+            return response.StatusCode.ToString();
         }
 
         string GetSignature(Dictionary<string, string> parameters)
