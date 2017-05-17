@@ -14,17 +14,19 @@ namespace RandomThings
     {
         HttpClient client;
 
-        string consumerKey;
+        string consumerKey; //!
         string nonce;
         string signature;
         string signatureMethod;
         string timestamp;
-        string oauthToken;
+        string oauthToken;  //!
         string oauthVersion;
 
         public OAuthThing()
         {
             client = new HttpClient();
+            client.DefaultRequestHeaders.Clear();
+            client.BaseAddress = new Uri(@"https://api.twitter.com/1.1/");
 
             signatureMethod = "HMAC_SHA1";
             oauthVersion = "1.0";
