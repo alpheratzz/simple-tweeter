@@ -29,23 +29,25 @@ namespace RandomThings
             client = new HttpClient();
             client.BaseAddress = new Uri(@"https://api.twitter.com/1.1/");
 
+            //values that are going to be the same for any post request
+            postParams.Add("oauth_token", oauthToken);
+            postParams.Add("oauth_consumer_key", oauthConsumerKey);
+            postParams.Add("oauth_signature_method", "HMAC-SHA1");
+            postParams.Add("oauth_version", "1.0");
+
             postParams = new Dictionary<string, string>();
         }
 
         public async Task<string> Tweet(string text)
         {
-            postParams.Clear();
-
-            postParams.Add("status", text);
-
-            postParams.Add("oauth_token", oauthToken);
-            postParams.Add("oauth_consumer_key", oauthConsumerKey);
-            postParams.Add("oauth_signature_method", "HMAC-SHA1");
-            postParams.Add("oauth_version", "1.0");
-            postParams.Add("oauth_nonce", GetNonce());
-            postParams.Add("oauth_timestamp", GetUnixTimestamp(DateTime.UtcNow).ToString());            
+            //values that may/should change
+            postParams["status"] = text;
+            postParams["trim_user"] = "true";
+            postParams["oauth_nonce"] = GetNonce();
+            postParams["oauth_timestamp"] = GetUnixTimestamp(DateTime.UtcNow).ToString();
             
-            postParams.Add("oauth_signature", GetSignature(postParams));
+            //creating signature
+            postParams["oauth_signature"] = GetSignature(postParams);
 
             var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
                 .Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
@@ -57,9 +59,6 @@ namespace RandomThings
 
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
             return await response.Content.ReadAsStringAsync();
-
-            //relative uri is 
-            //statuses/update.json
         }
 
         string GetSignature(Dictionary<string, string> parameters)

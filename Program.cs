@@ -15,8 +15,11 @@ namespace RandomThings
 
         static void Main(string[] args)
         {
-            Tweeter tweeter = new Tweeter("herp", "derp", "durrr", "hurrr");
-            Console.WriteLine(tweeter.Tweet("herp derp").Result);
+            Tweeter tweeter = new Tweeter("491632305-l41LEyIUBg0G81VHnnRNSOJq1DArQ6EMVIrpUS2y",
+                "9EbXB5SZmWUETdsgAVnLPINCM",
+                "zHt9rC9if1SGiZt3XgVJ1UXtYGFhPktinpVjryNoecZ9X",
+                "AASY6dyccwjfMDnAlHoXxId46fssDsvYqRrbWn8XSW1SfSTxyX");
+            Console.WriteLine(tweeter.Tweet("durrrr hurrrr").Result);
 
             Console.ReadKey(true);
         }
