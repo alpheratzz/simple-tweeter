@@ -16,15 +16,15 @@ namespace RandomThings
 
         readonly string oauthToken;
         readonly string oauthConsumerKey;
-        readonly string oauthTokenSecret;
-        readonly string oauthConsumerSecret;
 
-        public Tweeter(string oauthToken, string oauthConsumerKey, string oauthTokenSecret, string oauthConsumerKeySecret)
+        HMACSHA1 hmac;
+
+        public Tweeter(string oauthToken, string oauthConsumerKey, string oauthTokenSecret, string oauthConsumerSecret)
         {
             this.oauthToken = oauthToken;
             this.oauthConsumerKey = oauthConsumerKey;
-            this.oauthTokenSecret = oauthTokenSecret;
-            this.oauthConsumerSecret = oauthConsumerKeySecret;
+
+            hmac = new HMACSHA1(Encoding.ASCII.GetBytes($"{PercentEncode(oauthConsumerSecret)}&{PercentEncode(oauthTokenSecret)}"));
 
             client = new HttpClient();
             client.BaseAddress = new Uri(@"https://api.twitter.com/1.1/");
@@ -32,12 +32,12 @@ namespace RandomThings
             authParams = new Dictionary<string, string>();
         }
 
-        public void Tweet(string text)
+        public async void Tweet(string text)
         {
             authParams.Clear();
 
             authParams.Add("oauth_token", oauthToken);
-            authParams.Add("oauth_cosumer_key", oauthConsumerKey);
+            authParams.Add("oauth_consumer_key", oauthConsumerKey);
             authParams.Add("oauth_signature_method", "HMAC-SHA1");
             authParams.Add("oauth_version", "1.0");
             authParams.Add("oauth_nonce", GetNonce());
@@ -47,9 +47,12 @@ namespace RandomThings
             authParams.Add("status", text);
             authParams.Add("oauth_signature", GetSignature(authParams));
 
-            authParams.Remove("status");  
+            authParams.Remove("status");
+
+            var tmp = authParams.Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
+            string auth_header = "OAuth " + string.Join(", ", tmp);
+
             
-                      
 
             //relative uri is 
             //statuses/update.json
@@ -65,10 +68,6 @@ namespace RandomThings
 
             //seriously, they want me to do so much encoding
             string forSigning = $"POST&{PercentEncode(client.BaseAddress.ToString() + @"statuses/update.json")}&{PercentEncode(param_string)}";
-
-            //shouldn't really store the key
-            //although i have it's parts stored lol
-            HMACSHA1 hmac = new HMACSHA1(Encoding.ASCII.GetBytes($"{PercentEncode(oauthConsumerSecret)}&{PercentEncode(oauthTokenSecret)}"));
 
             return System.Convert.ToBase64String(hmac.ComputeHash(Encoding.ASCII.GetBytes(forSigning)));
         }
