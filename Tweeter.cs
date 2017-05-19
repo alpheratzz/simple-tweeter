@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.IO;
 using System.Drawing;
+using TinyJson;
 
 namespace RandomThings
 {
@@ -24,6 +25,7 @@ namespace RandomThings
         readonly Uri uploadApiAddress = new Uri(@"https://upload.twitter.com/1.1/");
 
         string logPath;
+        string requestAddress;
 
         HMACSHA1 hmac;
 
@@ -64,19 +66,31 @@ namespace RandomThings
             }
         }
 
-        public async Task<string> Tweet(string text)
+        public async Task<string> Tweet(string text, string imagePath = null)
         {
+            List<long> mediaIds = new List<long>();
+            if (imagePath != null)
+            {
+                mediaIds.Add(await UploadImage(imagePath));
+            }
+
+            //client.BaseAddress = tweetApiAddress;
+            requestAddress = @"statuses/update.json";
+
             SetDefaultPostParameters();
 
             //values that may or must change
             postParams["status"] = text;
             postParams["trim_user"] = "true";
+            if (mediaIds.Count == 1)
+                postParams["media_ids"] = $"{mediaIds[0]}";
+            if (mediaIds.Count > 1)
+                postParams["media_ids"] = $"[{string.Join(",", mediaIds.Where(id => id != -1))}]";
 
             AuthorizeRequest(false);
             
             var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
-
-            client.BaseAddress = tweetApiAddress;
+            
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
             using (StreamWriter logger = new StreamWriter(logPath, true))
             {
@@ -85,21 +99,30 @@ namespace RandomThings
             return response.StatusCode.ToString();
         }
 
-        public async Task<HttpResponseMessage> UploadImage(string path)
+        public async Task<long> UploadImage(string path)
         {
-            client.BaseAddress = uploadApiAddress;
+            //client.BaseAddress = uploadApiAddress;
+            requestAddress = @"media/upload.json";
 
             SetDefaultPostParameters();
             AuthorizeRequest(true);
 
             if (!IsValidImage(path))
-                return null;
+                return -1;
             byte[] data = File.ReadAllBytes(path);
             //postParams["media"] = string.Empty;
 
             var content = new MultipartFormDataContent();
             content.Add(new ByteArrayContent(data), "media");            
-            return await client.PostAsync(@"media/upload.json", content);
+            HttpResponseMessage response = await client.PostAsync(@"https://upload.twitter.com/1.1/media/upload.json", content);
+            using (StreamWriter logger = new StreamWriter(logPath, true))
+            {
+                logger.WriteLine($"{path} upload response:");
+                logger.WriteLine(response.Content.ReadAsStringAsync().Result + "\n");
+            }
+            var json = response.Content.ReadAsStringAsync().Result.FromJson<object>();
+            string mediaId = (string)((Dictionary<string, object>)json)["media_id_string"];
+            return long.Parse(mediaId);
         }
 
         //setting values that are going to be the same for any post request
@@ -134,17 +157,13 @@ namespace RandomThings
         {
             //twitter requires to sort params by the encoded key
             //that's why this looks a bit messy
-            var tmp = (mediaUpload ? parameters.Where(pair => pair.Key.StartsWith("oauth_")) : parameters)
+            var tmp = (mediaUpload ? parameters.Where(pair => pair.Key.StartsWith("oauth_")) : parameters)  //media upload request requires a bit different oauth signature
                     .Select(pair => new KeyValuePair<string, string>(PercentEncode(pair.Key), PercentEncode(pair.Value)))
                     .OrderBy(pair => pair.Key).Select(pair => $"{pair.Key}={pair.Value}");
             string param_string = string.Join("&", tmp);
 
-            string baseString;
             //seriously, they want me to do so much encoding
-            if (!mediaUpload)
-                baseString = $"POST&{PercentEncode(client.BaseAddress.ToString() + @"statuses/update.json")}&{PercentEncode(param_string)}";
-            else
-                baseString = $"POST&{PercentEncode(client.BaseAddress.ToString() + @"media/upload.json")}&{PercentEncode(param_string)}";
+            string baseString = $"POST&{PercentEncode((mediaUpload ? uploadApiAddress : tweetApiAddress) + requestAddress)}&{PercentEncode(param_string)}";
 
             return System.Convert.ToBase64String(hmac.ComputeHash(Encoding.ASCII.GetBytes(baseString)));
         }

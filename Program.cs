@@ -21,21 +21,24 @@ namespace RandomThings
             logPath = Console.ReadLine();
 
             Tweeter tweeter;
+            string img;
 
             try
-            {
+            {                
                 tweeter = new Tweeter(oauthConfigPath, logPath);
                 while (true)
                 {
-                    //Console.Write("I'd like to tweet this: ");
-                    //string msg = Console.ReadLine();
-                    //Console.WriteLine(tweeter.Tweet(msg).Result);
-                    //Console.WriteLine();
-
-                    Console.Write("Image path: ");
-                    string img = Console.ReadLine();
-                    HttpResponseMessage response = tweeter.UploadImage(img).Result;
-                    Console.WriteLine(response?.StatusCode);
+                    img = null;
+                    Console.Write("I'd like to tweet this: ");
+                    string msg = Console.ReadLine();
+                    Console.WriteLine("Do you want to post a picture? (y/n)");
+                    if (Console.ReadKey().Key == ConsoleKey.Y)
+                    {
+                        Console.Write("Image path: ");
+                        img = Console.ReadLine();
+                    }
+                    Console.WriteLine(tweeter.Tweet(msg, img).Result);
+                    Console.WriteLine();                    
                 }
             }
             catch (FileNotFoundException ex)
