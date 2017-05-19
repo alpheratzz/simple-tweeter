@@ -27,10 +27,15 @@ namespace RandomThings
                 tweeter = new Tweeter(oauthConfigPath, logPath);
                 while (true)
                 {
-                    Console.Write("I'd like to tweet this: ");
-                    string msg = Console.ReadLine();
-                    Console.WriteLine(tweeter.Tweet(msg).Result);
-                    Console.WriteLine();
+                    //Console.Write("I'd like to tweet this: ");
+                    //string msg = Console.ReadLine();
+                    //Console.WriteLine(tweeter.Tweet(msg).Result);
+                    //Console.WriteLine();
+
+                    Console.Write("Image path: ");
+                    string img = Console.ReadLine();
+                    HttpResponseMessage response = tweeter.UploadImage(img).Result;
+                    Console.WriteLine(response?.StatusCode);
                 }
             }
             catch (FileNotFoundException ex)
