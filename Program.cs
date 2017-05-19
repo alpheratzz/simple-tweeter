@@ -13,22 +13,31 @@ namespace RandomThings
     {
         static void Main(string[] args)
         {
-            string configPath, logPath;
-            Console.Write("Config file path: ");
-            configPath = Console.ReadLine();
+            string oauthConfigPath, logPath;
+            Console.Write("OAuth config file path: ");
+            oauthConfigPath = Console.ReadLine();
 
             Console.Write("Log file path: ");
             logPath = Console.ReadLine();
 
-            Tweeter tweeter = new Tweeter(configPath, logPath);
+            Tweeter tweeter;
 
-            while (true)
+            try
             {
-                Console.Write("I'd like to tweet this: ");
-                string msg = Console.ReadLine();
-                Console.WriteLine(tweeter.Tweet(msg).Result);
-                Console.WriteLine();
+                tweeter = new Tweeter(oauthConfigPath, logPath);
+                while (true)
+                {
+                    Console.Write("I'd like to tweet this: ");
+                    string msg = Console.ReadLine();
+                    Console.WriteLine(tweeter.Tweet(msg).Result);
+                    Console.WriteLine();
+                }
             }
+            catch (FileNotFoundException ex)
+            {
+                Console.WriteLine("Error: " + ex.Message);
+                Console.WriteLine("See you later!");
+            }            
 
             Console.ReadKey(true);
         }

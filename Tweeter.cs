@@ -19,23 +19,33 @@ namespace RandomThings
         readonly string oauthToken;
         readonly string oauthConsumerKey;
 
-        readonly string logPath;
+        const string tweetApiAddress = @"https://api.twitter.com/1.1/";
+        const string uploadApiAddress = @"https://upload.twitter.com/1.1/";
+
+        string logPath;
 
         HMACSHA1 hmac;
 
-        public Tweeter(string configPath, string logPath)
+        public Tweeter(string oauthConfigPath, string logPath)
         {
             this.logPath = logPath;
 
-            using (StreamReader reader = new StreamReader(configPath))
+            try
             {
-                oauthToken = reader.ReadLine();
-                oauthConsumerKey = reader.ReadLine();
-                string tokenSecret = reader.ReadLine();
-                string consumerSecret = reader.ReadLine();
-                
-                Setup(tokenSecret, consumerSecret);
-            }            
+                using (StreamReader reader = new StreamReader(oauthConfigPath))
+                {
+                    oauthToken = reader.ReadLine();
+                    oauthConsumerKey = reader.ReadLine();
+                    string tokenSecret = reader.ReadLine();
+                    string consumerSecret = reader.ReadLine();
+
+                    Setup(tokenSecret, consumerSecret);
+                }
+            }
+            catch (FileNotFoundException ex)
+            {
+                throw new FileNotFoundException($"Config file {ex.FileName} was not found");
+            }
         }
 
         void Setup(string oauthTokenSecret, string oauthConsumerSecret)
@@ -43,16 +53,10 @@ namespace RandomThings
             hmac = new HMACSHA1(Encoding.ASCII.GetBytes($"{PercentEncode(oauthConsumerSecret)}&{PercentEncode(oauthTokenSecret)}"));
 
             client = new HttpClient();
-            client.BaseAddress = new Uri(@"https://api.twitter.com/1.1/");
+            client.BaseAddress = new Uri(tweetApiAddress);
 
             postParams = new Dictionary<string, string>();
-
-            //values that are going to be the same for any post request
-            postParams.Add("oauth_token", oauthToken);
-            postParams.Add("oauth_consumer_key", oauthConsumerKey);
-            postParams.Add("oauth_signature_method", "HMAC-SHA1");
-            postParams.Add("oauth_version", "1.0");
-
+            
             using (StreamWriter logger = new StreamWriter(logPath, true))
             {
                 logger.WriteLine("\n" + DateTime.Now.ToString() + "\n");
@@ -61,23 +65,14 @@ namespace RandomThings
 
         public async Task<string> Tweet(string text)
         {
-            //values that may/should change
+            SetDefaultPostParameters();
+
+            //values that may or must change
             postParams["status"] = text;
             postParams["trim_user"] = "true";
-            postParams["oauth_nonce"] = GenerateNonce();
-            postParams["oauth_timestamp"] = GetUnixTimestamp(DateTime.UtcNow).ToString();
 
-            //creating signature
-            postParams.Remove("oauth_signature");
-            postParams["oauth_signature"] = GetSignature(postParams);
-
-            //adding the Authorization header to the future request
-            var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
-                .Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
-            string auth_header = "OAuth " + string.Join(", ", tmp);  
-            client.DefaultRequestHeaders.Remove("Authorization");
-            client.DefaultRequestHeaders.Add("Authorization", auth_header);
-
+            AuthorizeRequest();
+            
             var content = new FormUrlEncodedContent(postParams.Where(pair => !pair.Key.StartsWith("oauth_")));
 
             HttpResponseMessage response = await client.PostAsync(@"statuses/update.json", content);
@@ -86,6 +81,34 @@ namespace RandomThings
                 logger.WriteLine(response.Content.ReadAsStringAsync().Result + "\n");
             }
             return response.StatusCode.ToString();
+        }
+
+        //setting values that are going to be the same for any post request
+        void SetDefaultPostParameters()
+        {
+            postParams.Clear();
+
+            postParams.Add("oauth_token", oauthToken);
+            postParams.Add("oauth_consumer_key", oauthConsumerKey);
+            postParams.Add("oauth_signature_method", "HMAC-SHA1");
+            postParams.Add("oauth_version", "1.0");
+        }
+
+        void AuthorizeRequest()
+        {
+            //setting unique oauth parameters
+            postParams["oauth_nonce"] = GenerateNonce();
+            postParams["oauth_timestamp"] = GetUnixTimestamp(DateTime.UtcNow).ToString();
+
+            //creating signature            
+            postParams["oauth_signature"] = GetSignature(postParams);
+
+            //setting the Authorization header
+            var tmp = postParams.Where(pair => pair.Key.StartsWith("oauth_"))
+                .Select(pair => $"{PercentEncode(pair.Key)}=\"{PercentEncode(pair.Value)}\"");
+            string auth_header = "OAuth " + string.Join(", ", tmp);
+            client.DefaultRequestHeaders.Remove("Authorization");
+            client.DefaultRequestHeaders.Add("Authorization", auth_header);
         }
 
         string GetSignature(Dictionary<string, string> parameters)
