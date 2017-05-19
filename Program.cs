@@ -31,13 +31,21 @@ namespace RandomThings
                     img = null;
                     Console.Write("I'd like to tweet this: ");
                     string msg = Console.ReadLine();
-                    Console.WriteLine("Do you want to post a picture? (y/n)");
-                    if (Console.ReadKey().Key == ConsoleKey.Y)
+                    List<string> imgs = new List<string>();
+                    while (true)
                     {
-                        Console.Write("Image path: ");
-                        img = Console.ReadLine();
+                        Console.WriteLine("Do you want to post a picture? (y/n)");
+                        if (imgs.Count >= 4)
+                            Console.WriteLine("Warning: only maximum of 4 pictures can be posted");
+                        if (Console.ReadKey(true).Key == ConsoleKey.Y)
+                        {
+                            Console.Write("Image path: ");
+                            img = Console.ReadLine();
+                            imgs.Add(img);
+                        }
+                        else break;
                     }
-                    Console.WriteLine(tweeter.Tweet(msg, img).Result);
+                    Console.WriteLine(tweeter.Tweet(msg, imgs.ToArray()).Result);
                     Console.WriteLine();                    
                 }
             }

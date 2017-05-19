@@ -66,12 +66,27 @@ namespace RandomThings
             }
         }
 
-        public async Task<string> Tweet(string text, string imagePath = null)
+        public async Task<string> Tweet(string text, params string[] paths)
         {
             List<long> mediaIds = new List<long>();
-            if (imagePath != null)
+            //this is needed to prevent the BadRequest response in case there's something wrong
+            //e.g. more than 4 images or there's an animated gif in the middle of array
+            if (paths != null)
             {
-                mediaIds.Add(await UploadImage(imagePath));
+                int uploaded = 0;
+                for (int i = 0; i < paths.Length && uploaded < 4; i++)
+                {
+                    long id = await UploadImage(paths[i]);
+                    if (id != -1)
+                    {
+                        if (IsImageAnimated(paths[i]))
+                            if (uploaded == 0)
+                                uploaded = 4;
+                            else continue;
+                        mediaIds.Add(id);
+                        uploaded++;
+                    }
+                }
             }
 
             //client.BaseAddress = tweetApiAddress;
@@ -82,10 +97,10 @@ namespace RandomThings
             //values that may or must change
             postParams["status"] = text;
             postParams["trim_user"] = "true";
-            if (mediaIds.Count == 1)
-                postParams["media_ids"] = $"{mediaIds[0]}";
-            if (mediaIds.Count > 1)
-                postParams["media_ids"] = $"[{string.Join(",", mediaIds.Where(id => id != -1))}]";
+            //if (mediaIds.Count == 1)
+            //    postParams["media_ids"] = $"{mediaIds[0]}";
+            if (mediaIds.Count > 0)
+                postParams["media_ids"] = $"{string.Join(",", mediaIds)}";
 
             AuthorizeRequest(false);
             
@@ -181,6 +196,14 @@ namespace RandomThings
                 return false;
             }
             return true;
+        }
+
+        bool IsImageAnimated(string path)
+        {
+            using (Image img = Image.FromFile(path))
+            {
+                return ImageAnimator.CanAnimate(img);
+            }
         }
 
         //some utility one-line methods lol
